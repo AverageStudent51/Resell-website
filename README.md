@@ -1,12 +1,13 @@
 # AreaOffers
 
-AreaOffers is a local resale website where users can create accounts, post offers, browse nearby listings, message sellers, reserve offers, upload images, and report suspicious posts.
+AreaOffers is a local resale website where the site admin posts offers and users can create accounts, browse nearby listings, message the seller, reserve offers, and report suspicious posts.
 
 It includes:
 
 - PostgreSQL storage
 - secure accounts with bcrypt password hashing and sessions
 - public offer browsing with search, category, price, location, and sort filters
+- one admin account, with offer posting restricted to that admin
 - image upload with Cloudinary support, plus local fallback for testing
 - buyer/seller messaging with unread notifications
 - reserve/order flow with optional Stripe checkout
@@ -76,13 +77,13 @@ EMAIL_FROM=AreaOffers <verify@your-domain.com>
 RESEND_API_KEY=re_...
 ```
 
-If `EMAIL_VERIFICATION_REQUIRED` is not true, users can post, message, and reserve without email verification. This keeps local testing simple.
+If `EMAIL_VERIFICATION_REQUIRED` is not true, users can message and reserve without email verification. This keeps local testing simple.
 
 ## Admin
 
-The first registered account becomes admin automatically. You can also set `ADMIN_EMAIL` before registering to make a specific email admin.
+Only one account can be admin. If `ADMIN_EMAIL` is set before registration, only that email can become the admin account. If `ADMIN_EMAIL` is blank, the first registered account becomes admin automatically.
 
-Admins can view reports, open reported offers, view site stats, delete offers, ban sellers, and resolve reports.
+Only admins can post offers. Admins can also view reports, open reported offers, view site stats, delete offers, ban users, and resolve reports.
 
 ## Production Notes
 

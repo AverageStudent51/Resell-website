@@ -174,7 +174,7 @@ function renderTurnstile() {
 
 function renderAuthState() {
   const loggedIn = Boolean(state.user);
-  $('#sellBtn').classList.toggle('hidden', !loggedIn);
+  $('#sellBtn').classList.toggle('hidden', !(loggedIn && state.user.role === 'admin'));
   $('#userChip').classList.toggle('hidden', !loggedIn);
   $('#authBtn').textContent = loggedIn ? 'Log out' : 'Log in';
   if (loggedIn) {
@@ -205,7 +205,7 @@ async function loadListings() {
 function renderListings() {
   $('#listingCount').textContent = `${state.listings.length} offer${state.listings.length === 1 ? '' : 's'} found`;
   if (!state.listings.length) {
-    $('#listingGrid').innerHTML = '<div class="empty">No offers yet. Be the first person nearby to list something.</div>';
+    $('#listingGrid').innerHTML = '<div class="empty">No offers yet. Check back soon.</div>';
     return;
   }
   $('#listingGrid').innerHTML = state.listings.map((item) => `
@@ -595,6 +595,10 @@ async function resolveReport(id, deleteListing, banSeller) {
 function setupEvents() {
   $('#authBtn').addEventListener('click', handleLogoutOrLogin);
   $('#sellBtn').addEventListener('click', () => {
+    if (!state.user || state.user.role !== 'admin') {
+      toast('Only the admin account can list offers.');
+      return;
+    }
     if (state.user && !state.user.emailVerified && state.config.emailVerificationRequired) {
       resendVerification();
       return;
@@ -792,7 +796,7 @@ async function loadReports() {
 
 function renderAuthState() {
   const loggedIn = Boolean(state.user);
-  $('#sellBtn').classList.toggle('hidden', !loggedIn);
+  $('#sellBtn').classList.toggle('hidden', !(loggedIn && state.user.role === 'admin'));
   $('#userChip').classList.toggle('hidden', !loggedIn);
   $('#authBtn').textContent = loggedIn ? 'Log out' : 'Log in';
   if (loggedIn) {

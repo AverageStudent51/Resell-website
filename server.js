@@ -556,6 +556,43 @@ async function initDb() {
     END $$;
   `);
 
+  const adminEmail = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  if (adminEmail) {
+    await pool.query(
+      `WITH preferred AS (
+         SELECT id FROM users WHERE role = 'admin' AND LOWER(email) = $1 ORDER BY id LIMIT 1
+       ),
+       fallback AS (
+         SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1
+       ),
+       keeper AS (
+         SELECT id FROM preferred
+         UNION ALL
+         SELECT id FROM fallback WHERE NOT EXISTS (SELECT 1 FROM preferred)
+         LIMIT 1
+       )
+       UPDATE users
+       SET role = 'user', updated_at = NOW()
+       WHERE role = 'admin' AND id <> COALESCE((SELECT id FROM keeper), -1)`,
+      [adminEmail]
+    );
+  } else {
+    await pool.query(`
+      WITH keeper AS (
+        SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1
+      )
+      UPDATE users
+      SET role = 'user', updated_at = NOW()
+      WHERE role = 'admin' AND id <> COALESCE((SELECT id FROM keeper), -1)
+    `);
+  }
+
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_single_admin
+    ON users ((role))
+    WHERE role = 'admin';
+  `);
+
   // Adds order_id FK after both tables exist. Safe to ignore if already present.
   await pool.query(`
     DO $$
@@ -707,9 +744,15 @@ app.post('/api/auth/register', async (req, res, next) => {
       });
     }
 
-    const countResult = await pool.query('SELECT COUNT(*)::int AS count FROM users');
-    const isFirstUser = countResult.rows[0].count === 0;
-    const role = isFirstUser || (process.env.ADMIN_EMAIL && process.env.ADMIN_EMAIL.toLowerCase() === email) ? 'admin' : 'user';
+    const countResult = await pool.query(
+      `SELECT COUNT(*)::int AS user_count,
+              COUNT(*) FILTER (WHERE role = 'admin')::int AS admin_count
+       FROM users`
+    );
+    const isFirstUser = countResult.rows[0].user_count === 0;
+    const hasAdmin = countResult.rows[0].admin_count > 0;
+    const adminEmail = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+    const role = !hasAdmin && (!adminEmail || adminEmail === email) ? 'admin' : 'user';
     const passwordHash = await bcrypt.hash(password, 12);
     const token = verificationToken();
 
@@ -730,8 +773,8 @@ app.post('/api/auth/register', async (req, res, next) => {
         team.verified,
         team.verified ? new Date() : null,
         team.stats,
-        isFirstUser || !EMAIL_VERIFICATION_REQUIRED,
-        isFirstUser || !EMAIL_VERIFICATION_REQUIRED ? null : token,
+        role === 'admin' || !EMAIL_VERIFICATION_REQUIRED,
+        role === 'admin' || !EMAIL_VERIFICATION_REQUIRED ? null : token,
         passwordHash,
         role
       ]
@@ -744,6 +787,9 @@ app.post('/api/auth/register', async (req, res, next) => {
     res.status(201).json({ user: publicUser(user) });
   } catch (err) {
     if (err.code === '23505') {
+      if (err.constraint === 'idx_users_single_admin') {
+        return res.status(409).json({ error: 'An admin account already exists.' });
+      }
       const detail = String(err.detail || '');
       if (detail.includes('team_number') || detail.includes('program')) {
         return res.status(409).json({ error: 'That team already has an account.' });
@@ -885,7 +931,7 @@ app.get('/api/listings/:id', async (req, res, next) => {
   }
 });
 
-app.post('/api/listings', requireAuth, requireVerifiedEmail, upload.single('image'), async (req, res, next) => {
+app.post('/api/listings', requireAuth, requireAdmin, requireVerifiedEmail, upload.single('image'), async (req, res, next) => {
   try {
     const program = normalizeProgram(req.body.program) || req.user.program || 'FTC';
     const title = String(req.body.title || '').trim();
