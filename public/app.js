@@ -16,6 +16,7 @@ const state = {
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 const CATEGORY_OTHER_VALUE = 'Other';
+const canViewSellerOrders = () => Boolean(state.user && state.user.role === 'admin');
 const DEFAULT_PROGRAMS = {
   FLL: 'Local pickup',
   FTC: 'Local offer',
@@ -159,6 +160,16 @@ function renderAuthState() {
     $('#userChip').textContent = `${state.user.name}${state.user.role === 'admin' ? ' | admin' : ''}${state.user.emailVerified || !state.config.emailVerificationRequired ? '' : ' | verify email'}`;
   }
   $('#adminTab').classList.toggle('hidden', !(state.user && state.user.role === 'admin'));
+  syncOrderRoleControls();
+}
+
+function syncOrderRoleControls() {
+  const canSell = canViewSellerOrders();
+  if (!canSell && state.orderRole === 'seller') state.orderRole = 'buyer';
+  $('#sellerOrdersBtn')?.classList.toggle('hidden', !canSell);
+  $('#ordersSubtitle').textContent = canSell ? 'Track things you bought and sold.' : 'Track your purchases.';
+  $('#buyerOrdersBtn').className = `btn small ${state.orderRole === 'buyer' ? 'primary' : 'ghost'}`;
+  $('#sellerOrdersBtn').className = `btn small ${state.orderRole === 'seller' ? 'primary' : 'ghost'}${canSell ? '' : ' hidden'}`;
 }
 
 async function loadListings() {
@@ -481,15 +492,17 @@ async function sendReply(e) {
 }
 
 async function loadOrders() {
+  syncOrderRoleControls();
   if (!state.user) {
     $('#ordersLoginHint').classList.remove('hidden');
     $('#ordersList').innerHTML = '';
     return;
   }
   $('#ordersLoginHint').classList.add('hidden');
-  const data = await api(`/api/orders?role=${state.orderRole === 'seller' ? 'seller' : 'buyer'}`);
+  const activeOrderRole = canViewSellerOrders() && state.orderRole === 'seller' ? 'seller' : 'buyer';
+  const data = await api(`/api/orders?role=${activeOrderRole}`);
   if (!data.orders.length) {
-    $('#ordersList').innerHTML = `<div class="empty">No ${state.orderRole === 'seller' ? 'sales' : 'purchases'} yet.</div>`;
+    $('#ordersList').innerHTML = `<div class="empty">No ${activeOrderRole === 'seller' ? 'sales' : 'purchases'} yet.</div>`;
     return;
   }
   $('#ordersList').innerHTML = data.orders.map((o) => `
@@ -504,7 +517,7 @@ async function loadOrders() {
         </div>
         <span class="status ${escapeHtml(o.status)}">${escapeHtml(o.status)}</span>
       </div>
-      ${state.orderRole === 'seller' && ['paid', 'paid_demo'].includes(o.status) ? `
+      ${activeOrderRole === 'seller' && ['paid', 'paid_demo'].includes(o.status) ? `
         <form class="ship-form" onsubmit="updateShipping(event, ${o.id})">
           <input name="carrier" placeholder="Carrier: USPS, UPS...">
           <input name="trackingNumber" placeholder="Tracking number">
@@ -605,14 +618,17 @@ function setupEvents() {
   $('#replyForm').addEventListener('submit', sendReply);
   $('#buyerOrdersBtn').addEventListener('click', () => {
     state.orderRole = 'buyer';
-    $('#buyerOrdersBtn').className = 'btn small primary';
-    $('#sellerOrdersBtn').className = 'btn small ghost';
+    syncOrderRoleControls();
     loadOrders();
   });
   $('#sellerOrdersBtn').addEventListener('click', () => {
+    if (!canViewSellerOrders()) {
+      state.orderRole = 'buyer';
+      syncOrderRoleControls();
+      return;
+    }
     state.orderRole = 'seller';
-    $('#sellerOrdersBtn').className = 'btn small primary';
-    $('#buyerOrdersBtn').className = 'btn small ghost';
+    syncOrderRoleControls();
     loadOrders();
   });
   $('#refreshReportsBtn').addEventListener('click', loadReports);
@@ -628,19 +644,21 @@ window.confirmOrder = confirmOrder;
 window.resendVerification = resendVerification;
 
 async function loadOrders() {
+  syncOrderRoleControls();
   if (!state.user) {
     $('#ordersLoginHint').classList.remove('hidden');
     $('#ordersList').innerHTML = '';
     return;
   }
   $('#ordersLoginHint').classList.add('hidden');
-  const data = await api(`/api/orders?role=${state.orderRole === 'seller' ? 'seller' : 'buyer'}`);
+  const activeOrderRole = canViewSellerOrders() && state.orderRole === 'seller' ? 'seller' : 'buyer';
+  const data = await api(`/api/orders?role=${activeOrderRole}`);
   if (!data.orders.length) {
-    $('#ordersList').innerHTML = `<div class="empty">No ${state.orderRole === 'seller' ? 'sales' : 'purchases'} yet.</div>`;
+    $('#ordersList').innerHTML = `<div class="empty">No ${activeOrderRole === 'seller' ? 'sales' : 'purchases'} yet.</div>`;
     return;
   }
   $('#ordersList').innerHTML = data.orders.map((o) => `
-    <div class="order-card ${['paid', 'paid_demo', 'shipped'].includes(o.status) && !((state.orderRole === 'buyer' && o.buyer_confirmed) || (state.orderRole === 'seller' && o.seller_confirmed)) ? 'needs-attention' : ''}">
+    <div class="order-card ${['paid', 'paid_demo', 'shipped'].includes(o.status) && !((activeOrderRole === 'buyer' && o.buyer_confirmed) || (activeOrderRole === 'seller' && o.seller_confirmed)) ? 'needs-attention' : ''}">
       <div class="order-top">
         <div>
           <h3>${escapeHtml(o.listing_title)}</h3>
@@ -652,12 +670,12 @@ async function loadOrders() {
         </div>
         <span class="status ${escapeHtml(o.status)}">${escapeHtml(o.status)}</span>
       </div>
-      ${['paid', 'paid_demo', 'shipped'].includes(o.status) && !((state.orderRole === 'buyer' && o.buyer_confirmed) || (state.orderRole === 'seller' && o.seller_confirmed)) ? `
+      ${['paid', 'paid_demo', 'shipped'].includes(o.status) && !((activeOrderRole === 'buyer' && o.buyer_confirmed) || (activeOrderRole === 'seller' && o.seller_confirmed)) ? `
         <div class="card-actions">
           <button class="btn success" onclick="confirmOrder(${o.id})">Confirm my side</button>
         </div>
       ` : ''}
-      ${state.orderRole === 'seller' && ['paid', 'paid_demo'].includes(o.status) ? `
+      ${activeOrderRole === 'seller' && ['paid', 'paid_demo'].includes(o.status) ? `
         <form class="ship-form" onsubmit="updateShipping(event, ${o.id})">
           <input name="carrier" placeholder="Carrier: USPS, UPS...">
           <input name="trackingNumber" placeholder="Tracking number">
@@ -773,6 +791,7 @@ function renderAuthState() {
     $('#userChip').textContent = `${state.user.name}${state.user.role === 'admin' ? ' | admin' : ''}${state.user.emailVerified || !state.config.emailVerificationRequired ? '' : ' | verify email'}`;
   }
   $('#adminTab').classList.toggle('hidden', !(state.user && state.user.role === 'admin'));
+  syncOrderRoleControls();
 }
 
 function renderBadge(id, count) {

@@ -330,10 +330,10 @@ async function sendVerificationEmail(user, token) {
     body: JSON.stringify({
       from: process.env.EMAIL_FROM,
       to: user.email,
-      subject: 'Verify your AreaOffers email',
+      subject: 'Verify your Emerald City Resale email',
       html: `
         <p>Hi ${String(user.name || 'there').replace(/[<>&"]/g, '')},</p>
-        <p>Verify your AreaOffers account to start messaging, reserving, and selling.</p>
+        <p>Verify your Emerald City Resale account to start messaging, reserving, and selling.</p>
         <p><a href="${verifyUrl}">Verify email</a></p>
         <p>If the button does not work, paste this link into your browser:</p>
         <p>${verifyUrl}</p>
@@ -1169,7 +1169,7 @@ app.post('/api/listings/:id/buy', requireAuth, requireVerifiedEmail, async (req,
 
 app.get('/api/orders', requireAuth, async (req, res, next) => {
   try {
-    const role = req.query.role === 'seller' ? 'seller' : 'buyer';
+    const role = req.query.role === 'seller' && req.user.role === 'admin' ? 'seller' : 'buyer';
     const column = role === 'seller' ? 'o.seller_id' : 'o.buyer_id';
     const result = await pool.query(
       `SELECT o.*, l.title AS listing_title, l.image_url,
@@ -1378,7 +1378,7 @@ app.use((err, req, res, next) => {
 
 initDb()
   .then(() => {
-    app.listen(PORT, () => console.log(`AreaOffers running on port ${PORT}`));
+    app.listen(PORT, () => console.log(`Emerald City Resale running on port ${PORT}`));
   })
   .catch(err => {
     console.error('Database initialization failed:', err);

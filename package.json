@@ -1,7 +1,7 @@
 {
   "name": "areaoffers",
   "version": "2.0.0",
-  "description": "AreaOffers is a local resale marketplace for posting nearby offers with accounts, image uploads, messaging, reservations, and moderation.",
+  "description": "Emerald City Resale is a local resale marketplace for posting nearby offers with accounts, image uploads, messaging, reservations, and moderation.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

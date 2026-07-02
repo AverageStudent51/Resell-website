@@ -1,6 +1,6 @@
-# AreaOffers
+# Emerald City Resale
 
-AreaOffers is a local resale website where the site admin posts offers and users can create accounts, browse nearby listings, message the seller, reserve offers, and report suspicious posts.
+Emerald City Resale is a local resale website where the site admin posts offers and users can create accounts, browse nearby listings, message the seller, reserve offers, and report suspicious posts.
 
 It includes:
 
@@ -73,7 +73,7 @@ Email verification with Resend:
 
 ```bash
 EMAIL_VERIFICATION_REQUIRED=true
-EMAIL_FROM=AreaOffers <verify@your-domain.com>
+EMAIL_FROM=Emerald City Resale <verify@your-domain.com>
 RESEND_API_KEY=re_...
 ```
 
