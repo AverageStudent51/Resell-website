@@ -15,7 +15,6 @@ const Stripe = require('stripe');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const CLIENT_BASE_URL = process.env.CLIENT_BASE_URL || `http://localhost:${PORT}`;
-const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY || '';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const EMAIL_VERIFICATION_REQUIRED = process.env.EMAIL_VERIFICATION_REQUIRED === 'true' && Boolean(process.env.EMAIL_FROM && RESEND_API_KEY);
 const TEAM_VERIFY_REQUIRED = process.env.TEAM_VERIFY_REQUIRED === 'true';
@@ -378,24 +377,6 @@ function queueTeamLookup(userId, program, teamNumber) {
   });
 }
 
-async function verifyTurnstile(token, remoteIp) {
-  if (!TURNSTILE_SECRET_KEY) return process.env.NODE_ENV !== 'production';
-  if (!token) return false;
-
-  const body = new URLSearchParams();
-  body.set('secret', TURNSTILE_SECRET_KEY);
-  body.set('response', token);
-  if (remoteIp) body.set('remoteip', remoteIp);
-
-  const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-    method: 'POST',
-    body
-  });
-  if (!response.ok) return false;
-  const data = await response.json().catch(() => ({}));
-  return Boolean(data.success);
-}
-
 function normalizeListing(row) {
   return {
     id: row.id,
@@ -641,7 +622,6 @@ app.get('/api/health', (req, res) => {
     cloudinaryEnabled: Boolean(process.env.CLOUDINARY_CLOUD_NAME),
     emailEnabled: Boolean(process.env.EMAIL_FROM && RESEND_API_KEY),
     emailVerificationRequired: EMAIL_VERIFICATION_REQUIRED,
-    captchaEnabled: Boolean(process.env.TURNSTILE_SITE_KEY && TURNSTILE_SECRET_KEY),
     teamVerificationEnabled: Boolean((FIRST_API_USERNAME && FIRST_API_AUTH_TOKEN) || TBA_AUTH_KEY),
     teamVerificationRequired: TEAM_VERIFY_REQUIRED
   });
@@ -649,7 +629,6 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/config', (req, res) => {
   res.json({
-    turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || '',
     programs: PROGRAMS,
     emailVerificationRequired: EMAIL_VERIFICATION_REQUIRED,
     teamVerificationRequired: TEAM_VERIFY_REQUIRED
@@ -713,12 +692,10 @@ app.post('/api/auth/register', async (req, res, next) => {
     const teamNumber = String(req.body.teamNumber || '').trim();
     const password = String(req.body.password || '');
     const confirmPassword = String(req.body.confirmPassword || '');
-    const captchaToken = String(req.body.captchaToken || '').trim();
 
     if (name.length < 2) return res.status(400).json({ error: 'Name must be at least 2 characters.' });
     if (!isValidEmail(email)) return res.status(400).json({ error: 'Enter a valid email.' });
     if (teamNumber && !/^\d{1,6}$/.test(teamNumber)) return res.status(400).json({ error: 'Enter a valid lookup number.' });
-    if (!(await verifyTurnstile(captchaToken, req.ip))) return res.status(400).json({ error: 'Not-a-robot check failed.' });
     if (password !== confirmPassword) return res.status(400).json({ error: 'Passwords do not match.' });
     if (!isStrongPassword(password)) {
       return res.status(400).json({ error: 'Password must be at least 8 characters and include uppercase, lowercase, and a number.' });

@@ -10,9 +10,7 @@ const state = {
   notificationPollId: null,
   adminSection: 'reports',
   adminOverview: null,
-  config: { turnstileSiteKey: '', programs: {}, emailVerificationRequired: false, teamVerificationRequired: false },
-  turnstileWidgetId: null,
-  turnstileRenderAttempts: 0
+  config: { programs: {}, emailVerificationRequired: false, teamVerificationRequired: false }
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -150,26 +148,6 @@ async function loadMe() {
 async function loadConfig() {
   const data = await api('/api/config');
   state.config = data;
-}
-
-function renderTurnstile() {
-  const wrap = $('#turnstileWrap');
-  if (!wrap || state.authMode !== 'signup' || !state.config.turnstileSiteKey) return;
-  if (!window.turnstile) {
-    if (state.turnstileRenderAttempts < 20) {
-      state.turnstileRenderAttempts += 1;
-      setTimeout(renderTurnstile, 250);
-    }
-    return;
-  }
-  state.turnstileRenderAttempts = 0;
-  if (state.turnstileWidgetId !== null) {
-    window.turnstile.reset(state.turnstileWidgetId);
-    return;
-  }
-  state.turnstileWidgetId = window.turnstile.render('#turnstileWidget', {
-    sitekey: state.config.turnstileSiteKey
-  });
 }
 
 function renderAuthState() {
@@ -346,12 +324,10 @@ function updateAuthMode(mode) {
   $('#authProgram').parentElement.classList.add('hidden');
   $('#authTeamNumber').parentElement.classList.add('hidden');
   $('#authConfirmPassword').closest('label').classList.toggle('hidden', mode === 'login');
-  $('#turnstileWrap').classList.toggle('hidden', mode === 'login' || !state.config.turnstileSiteKey);
   $('#authTeamNumber').required = false;
   $('#authProgram').required = false;
   $('#authConfirmPassword').required = mode === 'signup';
   if (mode === 'signup') $('#authConfirmPassword').value = '';
-  setTimeout(renderTurnstile, 100);
 }
 
 function setAuthLoading(isLoading) {
@@ -373,8 +349,7 @@ async function handleAuth(e) {
     program: $('#authProgram').value,
     teamNumber: $('#authTeamNumber').value,
     password: $('#authPassword').value,
-    confirmPassword: $('#authConfirmPassword').value,
-    captchaToken: state.turnstileWidgetId !== null && window.turnstile ? window.turnstile.getResponse(state.turnstileWidgetId) : ''
+    confirmPassword: $('#authConfirmPassword').value
   };
 
   if (state.authMode === 'signup') {
@@ -384,10 +359,6 @@ async function handleAuth(e) {
     }
     if (!isStrongPassword(body.password)) {
       toast('Password must be at least 8 characters and include uppercase, lowercase, and a number.');
-      return;
-    }
-    if (state.config.turnstileSiteKey && !body.captchaToken) {
-      toast('Complete the not-a-robot check.');
       return;
     }
   }
@@ -406,7 +377,6 @@ async function handleAuth(e) {
     if (state.user && !state.user.emailVerified && state.config.emailVerificationRequired) toast('Check your email to verify your account before messaging, reserving, or selling.');
   } catch (err) {
     toast(err.message);
-    if (state.turnstileWidgetId !== null && window.turnstile) window.turnstile.reset(state.turnstileWidgetId);
   } finally {
     setAuthLoading(false);
   }
