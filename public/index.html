@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AreaOffers</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">AO</div>
+      <div>
+        <h1>AreaOffers</h1>
+        <p>Post local deals and find offers from people nearby</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span id="userChip" class="user-chip hidden"></span>
+      <button id="authBtn" class="btn ghost">Log in</button>
+      <button id="sellBtn" class="btn primary hidden">List offer</button>
+    </div>
+  </header>
+
+  <main>
+    <aside class="sidebar">
+      <h2>Filters</h2>
+      <label>Search
+        <input id="searchInput" type="text" placeholder="bike, desk, shoes, tutoring..." />
+      </label>
+      <label>Category
+        <select id="categoryInput">
+          <option value="">All</option>
+          <option>Electronics</option>
+          <option>Furniture</option>
+          <option>Clothing and shoes</option>
+          <option>Home and garden</option>
+          <option>Sports and outdoors</option>
+          <option>Collectibles</option>
+          <option>Baby and kids</option>
+          <option>Books and media</option>
+          <option>Vehicles and parts</option>
+          <option>Services</option>
+          <option>Free</option>
+          <option>Other</option>
+        </select>
+      </label>
+      <input id="programInput" type="hidden" value="" />
+      <div class="split">
+        <label>Min $
+          <input id="minPriceInput" type="number" min="0" placeholder="0" />
+        </label>
+        <label>Max $
+          <input id="maxPriceInput" type="number" min="0" placeholder="1000" />
+        </label>
+      </div>
+      <label>Local area
+        <input id="locationInput" type="text" placeholder="city, neighborhood, or ZIP" />
+      </label>
+      <label>Sort
+        <select id="sortInput">
+          <option value="newest">Newest</option>
+          <option value="price_asc">Price: low to high</option>
+          <option value="price_desc">Price: high to low</option>
+        </select>
+      </label>
+      <button id="applyFiltersBtn" class="btn primary full">Apply filters</button>
+      <button id="resetFiltersBtn" class="btn ghost full">Reset</button>
+
+      <div class="panel mini">
+        <h3>Local safety</h3>
+        <ul>
+          <li>Meet in a public place</li>
+          <li>Check the item before paying</li>
+          <li>Keep conversations in messages</li>
+          <li>Report suspicious offers</li>
+        </ul>
+      </div>
+    </aside>
+
+    <section class="content">
+      <div class="tabs">
+        <button id="marketTabBtn" class="tab active" data-tab="market">Marketplace</button>
+        <button id="messagesTabBtn" class="tab" data-tab="messages">Messages</button>
+        <button id="ordersTabBtn" class="tab" data-tab="orders">Orders</button>
+        <button id="adminTab" class="tab hidden" data-tab="admin">Admin</button>
+      </div>
+
+      <section id="marketTab" class="tab-pane active">
+        <div class="section-header">
+          <div>
+            <h2>Nearby offers</h2>
+            <p id="listingCount">Loading...</p>
+          </div>
+        </div>
+        <div id="listingGrid" class="grid"></div>
+      </section>
+
+      <section id="messagesTab" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h2>Messages</h2>
+            <p>Message buyers and sellers about local offers.</p>
+          </div>
+        </div>
+        <div id="messagesLoginHint" class="empty hidden">Log in to use messages.</div>
+        <div class="messages-layout">
+          <div id="threadList" class="thread-list"></div>
+          <div class="chat-panel">
+            <div id="chatHeader" class="chat-header">Choose a conversation</div>
+            <div id="chatMessages" class="chat-messages"></div>
+            <form id="replyForm" class="reply-form hidden">
+              <input id="replyInput" placeholder="Write a message..." maxlength="2000" />
+              <button class="btn primary">Send</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section id="ordersTab" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h2>Orders</h2>
+            <p>Track things you bought and sold.</p>
+          </div>
+          <div class="toggle-row">
+            <button id="buyerOrdersBtn" class="btn small primary">Buying</button>
+            <button id="sellerOrdersBtn" class="btn small ghost">Selling</button>
+          </div>
+        </div>
+        <div id="ordersLoginHint" class="empty hidden">Log in to view orders.</div>
+        <div id="ordersList" class="orders-list"></div>
+      </section>
+
+      <section id="adminTabPane" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h2>Admin moderation</h2>
+            <p>Review reports, delete listings, and ban sellers.</p>
+          </div>
+          <button id="refreshReportsBtn" class="btn ghost">Refresh</button>
+        </div>
+        <div class="admin-menu">
+          <button class="btn small primary" data-admin-section="reports">Reports</button>
+          <button class="btn small ghost" data-admin-section="overview">Overview</button>
+          <button class="btn small ghost" data-admin-section="users">Users</button>
+          <button class="btn small ghost" data-admin-section="orders">Orders</button>
+        </div>
+        <div id="adminOverview" class="admin-overview hidden"></div>
+        <div id="adminUsers" class="orders-list hidden"></div>
+        <div id="adminOrders" class="orders-list hidden"></div>
+        <div id="reportsList" class="orders-list"></div>
+      </section>
+    </section>
+  </main>
+
+  <div id="modalBackdrop" class="modal-backdrop hidden"></div>
+
+  <section id="authModal" class="modal hidden">
+    <button class="close" data-close>&times;</button>
+    <h2 id="authTitle">Log in</h2>
+    <form id="authForm">
+      <label>Name
+        <input id="authName" type="text" placeholder="Only needed for signup" />
+      </label>
+      <label>Email
+        <input id="authEmail" type="email" required placeholder="you@example.com" />
+      </label>
+      <label class="hidden">Account type
+        <select id="authProgram">
+          <option value="FLL">Local</option>
+          <option value="FTC" selected>FTC</option>
+          <option value="FRC">Shipping</option>
+        </select>
+      </label>
+      <label class="hidden">Team number
+        <input id="authTeamNumber" type="text" inputmode="numeric" pattern="[0-9]{1,6}" />
+      </label>
+      <label>Password
+        <span class="password-row">
+          <input id="authPassword" type="password" required minlength="8" placeholder="8+ chars, upper/lowercase, number" />
+          <button class="btn small ghost password-toggle" type="button" data-toggle-password="authPassword">Show</button>
+        </span>
+      </label>
+      <label class="hidden">Confirm password
+        <span class="password-row">
+          <input id="authConfirmPassword" type="password" placeholder="Re-enter password" />
+          <button class="btn small ghost password-toggle" type="button" data-toggle-password="authConfirmPassword">Show</button>
+        </span>
+      </label>
+      <div id="turnstileWrap" class="captcha-wrap hidden">
+        <div class="captcha-label">Not a robot check</div>
+        <div id="turnstileWidget"></div>
+      </div>
+      <button id="authSubmit" class="btn primary full">Log in</button>
+    </form>
+    <p class="switch-auth"><button id="switchAuthBtn">Need an account? Sign up</button></p>
+  </section>
+
+  <section id="sellModal" class="modal wide hidden">
+    <button class="close" data-close>&times;</button>
+    <h2>List an offer</h2>
+    <form id="sellForm">
+      <div class="split">
+        <label>Title
+          <input name="title" required minlength="3" placeholder="Control Hub bundle" />
+        </label>
+        <label>Price USD
+          <input name="price" required type="number" min="0" step="0.01" placeholder="299.99" />
+        </label>
+      </div>
+      <div class="split">
+        <input id="sellProgram" name="program" type="hidden" value="FTC" />
+        <label>Category
+          <select id="sellCategory" name="category">
+            <option>Electronics</option>
+            <option>Furniture</option>
+            <option>Clothing and shoes</option>
+            <option>Home and garden</option>
+            <option>Sports and outdoors</option>
+            <option>Collectibles</option>
+            <option>Baby and kids</option>
+            <option>Books and media</option>
+            <option>Vehicles and parts</option>
+            <option>Services</option>
+            <option>Free</option>
+            <option>Other</option>
+          </select>
+        </label>
+      </div>
+      <div class="split">
+        <label>Condition
+          <select name="condition">
+            <option>New</option>
+            <option selected>Used</option>
+            <option>Like new</option>
+            <option>Fair</option>
+            <option>For parts</option>
+          </select>
+        </label>
+      </div>
+      <label id="customCategoryWrap" class="hidden">Custom category
+        <input id="customCategoryInput" name="customCategory" maxlength="40" placeholder="Type the category name" />
+      </label>
+      <label>Location
+        <input name="location" required placeholder="Downtown Seattle, WA or 98101" />
+      </label>
+      <label>Description
+        <textarea name="description" required minlength="10" placeholder="Describe the offer, condition, pickup area, and anything included."></textarea>
+      </label>
+      <label>Upload image
+        <input id="listingImageInput" name="image" type="file" accept="image/*" />
+      </label>
+      <img id="imagePreview" class="image-preview hidden" alt="" />
+      <label>or Image URL
+        <input name="imageUrl" type="url" placeholder="https://example.com/photo.jpg" />
+      </label>
+      <button class="btn primary full">Post offer</button>
+    </form>
+  </section>
+
+  <section id="listingModal" class="modal wide hidden">
+    <button class="close" data-close>&times;</button>
+    <div id="listingDetail"></div>
+  </section>
+
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+  <script src="/app.js"></script>
+</body>
+</html>
